@@ -15,12 +15,12 @@ import { createParamMenuGuard } from './paramMenuGuard';
 
 // Don't change the order of creation
 export function setupRouterGuard(router: Router) {
-  createPageGuard(router);
-  createPageLoadingGuard(router);
-  createHttpGuard(router);
-  createScrollGuard(router);
-  createMessageGuard(router);
-  createProgressGuard(router);
+  createPageGuard(router); //页面切换状态管理
+  createPageLoadingGuard(router); //页面加载 loading。
+  createHttpGuard(router); // 路由切换中断请求
+  createScrollGuard(router); // 路由切换时回到顶部
+  createMessageGuard(router); // 关闭没有关闭的提示消息
+  createProgressGuard(router); // 加载进度条
   createPermissionGuard(router);
   createParamMenuGuard(router); // must after createPermissionGuard (menu has been built.)
   createStateGuard(router);
@@ -142,6 +142,7 @@ export function createProgressGuard(router: Router) {
 
   router.afterEach(async () => {
     unref(getOpenNProgress) && nProgress.done();
+    nProgress.done();
     return true;
   });
 }
