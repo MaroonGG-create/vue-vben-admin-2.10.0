@@ -12,6 +12,7 @@ import { transformRouteToMenu } from '/@/router/helper/menuHelper';
 import projectSetting from '/@/settings/projectSetting';
 
 import { PermissionModeEnum } from '/@/enums/appEnum';
+import { PageEnum } from '/@/enums/pageEnum';
 
 import { asyncRoutes } from '/@/router/routes';
 import { ERROR_LOG_ROUTE, PAGE_NOT_FOUND_ROUTE } from '/@/router/routes/basic';
@@ -173,17 +174,46 @@ export const usePermissionStore = defineStore({
         return routes.map((route)=>{
           if(route.children && route.children.length>0){
             route.children = wrapperRouteComponent(route.children)
-          }else{
-            const component = ROUTE_MAP[route.name]
-            if(component){
-              route.component = component
-            }else{
-              route.component = ROUTE_MAP['NOT_FOUND']
-            } 
           }
+          const component = ROUTE_MAP[route.name]
+          if(component){
+            route.component = component
+          }else{
+            route.component = ROUTE_MAP['NOT_FOUND']
+          } 
           return route
         })
       }
+      const parseRouteRoles = (
+        routes: AppRouteRecordRaw[],
+      ): AppRouteRecordRaw[] => {
+        return routes.map((route) => {
+          // 先处理子路由，并递归解析
+          if (route.children?.length) {
+            route.children = parseRouteRoles(
+              wrapperRouteComponent(route.children),
+            );
+          }
+
+          // 处理当前路由的 roles
+          if (route.meta?.roles && typeof route.meta.roles === 'string') {
+            try {
+              route.meta.roles = JSON.parse(route.meta.roles);
+            } catch (error) {
+              console.error('roles 解析失败：', route.meta.roles, error);
+              route.meta.roles = [];
+            }
+          }
+          console.log('route after parse roles:', route);
+          return route;
+        });
+      };
+      const addPageNotFoundAtFirst = (routes) => {
+        routes.unshift(PAGE_NOT_FOUND_ROUTE);
+        return routes;
+      };
+
+      
       let backendRouteList: AppRouteRecordRaw[] = [];
       try{
         //backendRouteList = asyncRoutes
@@ -210,7 +240,8 @@ export const usePermissionStore = defineStore({
                 "path": "workbench",
                 "name": "Workbench",
                 "meta": {
-                  "title": "routes.dashboard.workbench"
+                  "title": "routes.dashboard.workbench",
+                  "roles": "[\\"test\\"]"
                 }
               }
             ]
@@ -218,6 +249,8 @@ export const usePermissionStore = defineStore({
         ]
         `);
           backendRouteList = wrapperRouteComponent(backendRouteList)
+          backendRouteList = parseRouteRoles(backendRouteList)
+          backendRouteList = addPageNotFoundAtFirst(backendRouteList);
       }catch(e){
         console.log(e)
       }      
