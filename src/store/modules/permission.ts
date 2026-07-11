@@ -14,17 +14,16 @@ import projectSetting from '/@/settings/projectSetting';
 import { PermissionModeEnum } from '/@/enums/appEnum';
 import { PageEnum } from '/@/enums/pageEnum';
 
-import { asyncRoutes } from '/@/router/routes';
+// import { asyncRoutes } from '/@/router/routes';
 import { ERROR_LOG_ROUTE, PAGE_NOT_FOUND_ROUTE } from '/@/router/routes/basic';
 
 import { filter } from '/@/utils/helper/treeHelper';
 
-import { getMenuList } from '/@/api/sys/menu';
+import { getMenuList, getActiveMenu } from '/@/api/sys/menu';
 import { getPermCode } from '/@/api/sys/user';
 
 import { useMessage } from '/@/hooks/web/useMessage';
 import { ROUTE_MAP } from '/@/router/route-map';
-
 
 interface PermissionState {
   // Permission code list
@@ -170,29 +169,48 @@ export const usePermissionStore = defineStore({
         return;
       };
 
-      const wrapperRouteComponent =(routes)=>{
-        return routes.map((route)=>{
-          if(route.children && route.children.length>0){
-            route.children = wrapperRouteComponent(route.children)
+      const normalizeRouteList = (data: unknown): AppRouteRecordRaw[] => {
+        if (Array.isArray(data)) return data as AppRouteRecordRaw[];
+
+        if (typeof data === 'string') {
+          try {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (error) {
+            console.error('菜单数据解析失败:', data, error);
+            return [];
           }
-          const component = ROUTE_MAP[route.name]
-          if(component){
-            route.component = component
-          }else{
-            route.component = ROUTE_MAP['NOT_FOUND']
-          } 
-          return route
-        })
-      }
-      const parseRouteRoles = (
-        routes: AppRouteRecordRaw[],
-      ): AppRouteRecordRaw[] => {
+        }
+
+        const routeList = (data as Recordable)?.result ?? (data as Recordable)?.data;
+        return Array.isArray(routeList) ? routeList : [];
+      };
+
+      const wrapperRouteComponent = (routes: AppRouteRecordRaw[]) => {
+        return routes.map((route) => {
+          const routeName = String(route.name);
+          const component = route.component || ROUTE_MAP[routeName];
+
+          if (route.children?.length) {
+            route.children = wrapperRouteComponent(route.children);
+          }
+
+          if (component) {
+            route.component = component;
+          } else if (!route.children?.length) {
+            console.error(`叶子路由未匹配到组件：${routeName}`, route);
+
+            route.component = ROUTE_MAP['PageNotFound'];
+          }
+
+          return route;
+        });
+      };
+      const parseRouteRoles = (routes: AppRouteRecordRaw[]): AppRouteRecordRaw[] => {
         return routes.map((route) => {
           // 先处理子路由，并递归解析
           if (route.children?.length) {
-            route.children = parseRouteRoles(
-              wrapperRouteComponent(route.children),
-            );
+            route.children = parseRouteRoles(wrapperRouteComponent(route.children));
           }
 
           // 处理当前路由的 roles
@@ -213,47 +231,70 @@ export const usePermissionStore = defineStore({
         return routes;
       };
 
-      
-      let backendRouteList: AppRouteRecordRaw[] = [];
-      try{
-        //backendRouteList = asyncRoutes
-        backendRouteList = JSON.parse(`
-        [
-          {
-            "path": "/dashboard",
-            "name": "Dashboard",
-            "redirect": "/dashboard/analysis",
-            "meta": {
-              "orderNo": 10,
-              "icon": "ion:grid-outline",
-              "title": "routes.dashboard.dashboard"
-            },
-            "children": [
-              {
-                "path": "analysis",
-                "name": "Analysis",
-                "meta": {
-                  "title": "routes.dashboard.analysis"
-                }
-              },
-              {
-                "path": "workbench",
-                "name": "Workbench",
-                "meta": {
-                  "title": "routes.dashboard.workbench",
-                  "roles": "[\\"test\\"]"
-                }
-              }
-            ]
+      const parseMenuMeta = (meta: unknown) => {
+        if (typeof meta !== 'string') return meta || {};
+
+        try {
+          return JSON.parse(meta);
+        } catch (error) {
+          console.error('route meta parse failed:', meta, error);
+          return {};
+        }
+      };
+
+      const convertMenuTree = (menuList: AppRouteRecordRaw[]) => {
+        const routeMap = new Map<string, AppRouteRecordRaw>();
+        const menus: AppRouteRecordRaw[] = [];
+
+        menuList.forEach((menu) => {
+          const route = {
+            ...menu,
+            meta: parseMenuMeta((menu as Recordable).meta),
+            children: [],
+          } as AppRouteRecordRaw;
+
+          routeMap.set(String((route as Recordable).id), route);
+        });
+
+        routeMap.forEach((menu) => {
+          const pid = (menu as Recordable).pid;
+
+          if (pid == null || String(pid) === '0') {
+            menus.push(menu);
+            return;
           }
-        ]
-        `);
-          backendRouteList = wrapperRouteComponent(backendRouteList)
-          backendRouteList = parseRouteRoles(backendRouteList)
-          backendRouteList = addPageNotFoundAtFirst(backendRouteList);
-      }catch(e){
-        console.log(e)
-      }      
+
+          const parentMenu = routeMap.get(String(pid));
+          if (!parentMenu) {
+            console.warn('menu parent not found:', menu);
+            menus.push(menu);
+            return;
+          }
+
+          parentMenu.children = parentMenu.children || [];
+          parentMenu.children.push(menu);
+        });
+
+        return menus;
+      };
+      const getActiveMenuData = () => {
+        return getActiveMenu().then((menu) => {
+          console.log('menu', menu);
+          return convertMenuTree(normalizeRouteList(menu));
+        });
+      };
+      let backendRouteList: AppRouteRecordRaw[] = [];
+      try {
+        //backendRouteList = asyncRoutes
+        const menuData = await getActiveMenuData();
+        console.log('backendRouteList', menuData);
+        backendRouteList = normalizeRouteList(menuData);
+        backendRouteList = wrapperRouteComponent(backendRouteList);
+        backendRouteList = parseRouteRoles(backendRouteList);
+        backendRouteList = addPageNotFoundAtFirst(backendRouteList);
+      } catch (e) {
+        console.log(e);
+      }
       switch (permissionMode) {
         // 角色权限
         case PermissionModeEnum.ROLE:

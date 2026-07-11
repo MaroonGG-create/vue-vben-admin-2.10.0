@@ -1,12 +1,16 @@
 import { asyncRoutes } from '@/router/routes';
 
-const newRoutes = {};
+const newRoutes: Record<string, any> = {};
+
 function generateRouteMap(routes) {
-  return routes.map((item) => {
-    if (item.children && item.children.length > 0) {
+  routes.forEach((item) => {
+    if (item.name && item.component) {
+      newRoutes[String(item.name)] = item.component;
+    }
+
+    if (item.children?.length) {
       generateRouteMap(item.children);
     }
-    newRoutes[item.name] = item.component;
   });
 }
 

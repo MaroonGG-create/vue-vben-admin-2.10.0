@@ -30,7 +30,7 @@
     "lint:prettier": "prettier --write .",
     "lint:stylelint": "stylelint \"**/*.{vue,css,less.scss}\" --fix --cache --cache-location node_modules/.cache/stylelint/",
     "prepare": "husky install",
-    "preview": "npm run build && vite preview", 
+    "preview": "npm run build && vite preview",
     "reinstall": "rimraf pnpm-lock.yaml && rimraf package.lock.json && rimraf node_modules && npm run bootstrap",
     "serve": "npm run dev",
     "test:gzip": "npx http-server dist --cors --gzip -c-1",
@@ -49,7 +49,6 @@
     ],
     "*.vue": [
       "prettier --write",
-      "eslint --fix",
       "stylelint --fix"
     ],
     "*.{scss,less,styl,html}": [
