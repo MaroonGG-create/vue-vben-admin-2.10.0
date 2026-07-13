@@ -77,6 +77,7 @@
       }
 
       function handleEdit(record: Recordable) {
+        record.parentMenu = record.pid
         openDrawer(true, {
           record,
           isUpdate: true,

@@ -222,7 +222,6 @@ export const usePermissionStore = defineStore({
               route.meta.roles = [];
             }
           }
-          console.log('route after parse roles:', route);
           return route;
         });
       };
@@ -263,11 +262,9 @@ export const usePermissionStore = defineStore({
             menus.push(menu);
             return;
           }
-
           const parentMenu = routeMap.get(String(pid));
           if (!parentMenu) {
-            console.warn('menu parent not found:', menu);
-            menus.push(menu);
+            console.warn('menu parent not found, skipped:', menu);
             return;
           }
 
@@ -287,7 +284,6 @@ export const usePermissionStore = defineStore({
       try {
         //backendRouteList = asyncRoutes
         const menuData = await getActiveMenuData();
-        console.log('backendRouteList', menuData);
         backendRouteList = normalizeRouteList(menuData);
         backendRouteList = wrapperRouteComponent(backendRouteList);
         backendRouteList = parseRouteRoles(backendRouteList);
