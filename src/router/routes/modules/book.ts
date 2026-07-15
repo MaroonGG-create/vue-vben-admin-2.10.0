@@ -17,7 +17,7 @@ const book: AppRouteModule = {
     {
       path: 'list',
       name: 'List',
-      component: () => import('/@/views/demo/page/list/search/index.vue'),
+      component: () => import('/@/views/book/list/index.vue'),
       meta: {
         // affix: true,
         title: t('routes.book.list'),
@@ -26,7 +26,7 @@ const book: AppRouteModule = {
     {
       path: 'create',
       name: 'Create',
-      component: () => import('/@/views/demo/page/form/high/index.vue'),
+      component: () => import('/@/views/book/create/index.vue'),
       meta: {
         // affix: true,
         title: t('routes.book.create'),
