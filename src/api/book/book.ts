@@ -8,6 +8,6 @@ enum Api {
  * @description: Get user menu based on id
  */
 
-export const getBookList = (data) => {
-  return defHttp.get({ url: Api.GetBookList,data });
+export const getBookList = (params) => {
+  return defHttp.get({ url: Api.GetBookList,params });
 };

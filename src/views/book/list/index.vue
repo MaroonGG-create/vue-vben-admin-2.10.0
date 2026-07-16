@@ -6,7 +6,7 @@
         :labelWidth="100"
         :schemas="schemas"
         showActionButtonGroup
-        @submit="onSubmit"
+        @submit="handleQuery"
       />
     </template>
 
@@ -14,13 +14,22 @@
       <a-list>
         <template v-for="item in list" :key="item.id">
           <a-list-item>
+            <template #extra>
+              <a :href="wrapperCoverImage(item.cover)" target="_blank">
+                <img
+                  :class="`${prefixCls}__cover`"
+                  alt="logo"
+                  :src="wrapperCoverImage(item.cover)"
+                />
+              </a>
+            </template>
             <a-list-item-meta>
               <template #description>
                 <div :class="`${prefixCls}__content`">
                   {{ item.content }}
                 </div>
                 <div :class="`${prefixCls}__action`">
-                  <template v-for="action in actions" :key="action.icon">
+                  <!-- <template v-for="action in actions" :key="action.icon">
                     <div :class="`${prefixCls}__action-item`">
                       <Icon
                         v-if="action.icon"
@@ -30,7 +39,7 @@
                       />
                       {{ action.text }}
                     </div>
-                  </template>
+                  </template> -->
                   <span :class="`${prefixCls}__time`">{{ item.time }}</span>
                 </div>
               </template>
@@ -61,8 +70,8 @@
   </PageWrapper>
 </template>
 <script lang="ts">
-  import { Tag, List,Pagination } from 'ant-design-vue';
-  import { defineComponent,ref } from 'vue';
+  import { Tag, List, Pagination } from 'ant-design-vue';
+  import { defineComponent, ref } from 'vue';
   import Icon from '@/components/Icon/Icon.vue';
   import { BasicForm } from '/@/components/Form/index';
   import { actions, searchList, schemas } from './data';
@@ -70,13 +79,52 @@
   const total = ref(80);
   const current = ref(1);
   const pageSize = ref(20);
-  const list  = ref([])
-  const onPageChange = (page: number) => {
-    console.log('onPageChange', page);
-  };
-  const onSubmit = (values: any) => {
-      console.log('onSubmit', values);
+  const list = ref([]);
+  const title = ref();
+  const author = ref();
+  const onPageChange = (page: number, pagesize) => {
+    current.value = page
+    pageSize.value = pagesize
+    const params: any = {
+      title: title.value,
+      author: author.value,
+      page: current.value,
+      pageSize: pageSize.value,
     };
+    handleSearchList(params)
+  };
+  const handleQuery = (values: any) => {
+    if (values.title) {
+      title.value = values.title;
+    } else {
+      title.value = null;
+    }
+    if (values.author) {
+      author.value = values.author;
+    } else {
+      author.value = null;
+    }
+    const params: any = {
+      title: title.value,
+      author: author.value,
+      page: current.value,
+      pageSize: pageSize.value,
+    };
+    handleSearchList(params);
+  };
+  const wrapperCoverImage = (cover) => {
+    if (cover.startsWith('/')) {
+      return `https://www.youbaobao.xyz/book/res/img${cover}`;
+    } else {
+      return `http://localhost:8080/upload/cover/${cover}`;
+    }
+  };
+  const handleSearchList = (params) => {
+    searchList(params).then(({ data, count }) => {
+      list.value = data;
+      total.value = count;
+    });
+  };
   export default defineComponent({
     components: {
       Icon,
@@ -88,10 +136,8 @@
       [List.Item.name]: List.Item,
       AListItemMeta: List.Item.Meta,
     },
-    mounted(){
-      searchList().then(data=>{
-        list.value = data
-      })
+    mounted() {
+      handleSearchList({});
     },
     setup() {
       return {
@@ -99,11 +145,13 @@
         list,
         actions,
         schemas,
-        onSubmit,
+        handleQuery,
         total,
         pageSize,
         current,
-        onPageChange
+        onPageChange,
+        handleSearchList,
+        wrapperCoverImage,
       };
     },
   });
@@ -114,6 +162,11 @@
       &-form {
         margin-bottom: -16px;
       }
+    }
+
+    &__cover {
+      width: 120px;
+      height: 140px;
     }
 
     &__container {
@@ -154,8 +207,6 @@
     }
 
     &__time {
-      position: absolute;
-      right: 20px;
       color: rgb(0 0 0 / 45%);
     }
   }

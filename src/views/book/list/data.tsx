@@ -1,11 +1,19 @@
 import { FormSchema } from '/@/components/Form/index';
 import { getBookList } from '@/api/book/book';
-export const searchList = (async () => {
+export const searchList = async (params = {}) => {
   const result: any[] = [];
-  let res = await getBookList({});
-  console.log(res);
-  for (let i = 0; i < res.length; i++) {
-    const item = res[i];
+  const { title, author,page, pageSize}: any = params;
+  const p: any = {
+    page,
+    pageSize,
+  };
+  if (title) p.title = title;
+  if (author) p.author = author;
+  console.log(p);
+
+  let { data, count } = await getBookList(p);
+  for (let i = 0; i < data.length; i++) {
+    const item = data[i];
     result.push({
       id: item.id,
       title: item.title,
@@ -16,8 +24,8 @@ export const searchList = (async () => {
       fileName: item.fileName,
     });
   }
-  return result;
-});
+  return {data: result, count};
+};
 
 export const actions: any[] = [
   { icon: 'clarity:star-line', text: '156', color: '#018ffb' },
@@ -27,7 +35,7 @@ export const actions: any[] = [
 
 export const schemas: FormSchema[] = [
   {
-    field: 'name',
+    field: 'title',
     component: 'Input',
     label: '图书名',
     colProps: {
